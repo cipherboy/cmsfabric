@@ -1,21 +1,14 @@
-import requests
+from cmsfabric.spinning import *
 
 class Weave:
-    def add_server(self, hostname, port):
-        assert(type(hostname) == str)
-        assert(type(port) == int)
-        ns = "http://" + hostname + ":" + str(port)
-        self.known_servers.add(ns)
+    def __init__(self):
+        self.spinning = Spinning()
 
-    def check_servers(self):
-        for server in self.known_servers:
-            self.check_server(server)
-
-    def check_server(self, server):
-        assert(server in known_servers)
-        r = request.get(server + "/status")
-        if r.status_code == 200:
-            if r.text == "true":
-                self.ready_servers.add(server)
-            else:
-                self.ready_servers.remove(server)
+    def spin_from_object(self, config):
+        for server_config in config:
+            if server_config['type'] == 'ssh':
+                self.spinning.add_server_ssh(server_config["ssh_host"], server_config)
+            if server_config['type'] == 'uri':
+                self.spinning.add_server_ssh(server_config["uri_host"], server_config["uri_port"], server_config)
+            if server_config['type'] == 'local':
+                self.spinning.add_local(server_config)

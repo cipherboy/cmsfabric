@@ -1,5 +1,6 @@
 import base64, json
 import subprocess, random, time
+from cmsfabric.clients import *
 
 class Spinning:
     def __init__(self):
@@ -26,7 +27,7 @@ class Spinning:
             return n_p.poll()
         return None
 
-    def setup_server_ssh(self, hostname):
+    def setup_server_ssh(self, host):
         cmds = ["wget https://cipherboy.com/cmsfabric.tar.gz", "tar -xf cmsfabric.tar.gz"]
         for cmd in cmds:
             r = self.run_ssh(host, cmd)
@@ -72,7 +73,7 @@ class Spinning:
         return sl
 
     def running_job_list(self, server):
-        jl = list(self.running_jobs[server]):
+        jl = list(self.running_jobs[server])
         random.shuffle(jl)
         return jl
 
@@ -103,10 +104,10 @@ class Spinning:
 
     def update_finished_jobs(self):
         newly_finished = {}
-        for client in self.server_list():
-            for j in running_job_list():
+        for client in self.servers:
+            for j in self.running_jobs[client]:
                 if self.clients[client].finished(j):
-                    newly_finished.[j] = client
+                    newly_finished[j] = client
                     self.running_jobs[client].remove(j)
                     self.finished_jobs[client].add(j)
         return newly_finished
@@ -115,3 +116,10 @@ class Spinning:
         for j in finished:
             c = finished[j]
             self.results[j] = self.clients[c].result(j)
+
+    def have_remaining_jobs(self):
+        self.update_finished_jobs()
+        for client in self.servers:
+            if len(self.running_jobs[client]) > 0:
+                return True
+        return False

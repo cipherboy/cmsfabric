@@ -1,6 +1,9 @@
 import base64, json
 import requests, subprocess
 
+from cmsfabric.jobs import *
+from cmsfabric.utils import *
+
 class Client:
     def __init__(self, config=None):
         self.config = config

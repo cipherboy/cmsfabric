@@ -2,7 +2,7 @@ import time, os, shutil
 import base64, json
 import subprocess, sys, random
 
-from utils import u_ri, u_p
+from cmsfabric.utils import *
 
 class Job:
     def __init__(self, config):
