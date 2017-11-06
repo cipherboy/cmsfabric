@@ -12,6 +12,9 @@ class Jobs:
         self.wj = set()
         self.config = config
 
+    def update_config(self, config):
+        self.config = config
+
     def update(self):
         for jid in self.jq.copy():
             j = self.jobs[jid]
@@ -100,6 +103,10 @@ class Jobs:
             ps += " - Wait time: " + str(time.time() - j.stime) + "\n"
 
         return ps
+
+    def all(self):
+        d = {"jq": list(self.jq), "wj": list(self.wj), "fj": list(self.fj)}
+        return json.dumps(d)
 
     def result(self, j):
         assert(type(j) == Job)

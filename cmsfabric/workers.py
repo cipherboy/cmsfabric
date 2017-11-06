@@ -1,32 +1,30 @@
-#!/usr/bin/env python
-
-## For Python2
-# from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-## For Python3
-from http.server import BaseHTTPRequestHandler, HTTPServer
+try:
+    # For Python2
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+except:
+    # For Python3
+    from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import time, time
 import base64, json
 import subprocess, sys, random
 
-assert(len(sys.argv) == 2)
-config = json.load(open(sys.argv[1], 'r'))
-
 from job import Job
 from jobs import Jobs
 
-queues = Jobs(config)
-
 class Handler(BaseHTTPRequestHandler):
+    config = None
+    queues = None
+
     def build_job(self):
-        j = Job(config)
+        j = Job(Handler.config)
         content_length = int(self.headers['Content-Length'])
         j.set(self.rfile.read(content_length))
-        return queues.add(j)
+        return Handler.queues.add(j)
 
     def do_POST(self):
         jid = self.build_job()
-        queues.update()
+        Handler.queues.update()
 
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
@@ -34,13 +32,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(bytes(jid, 'utf8'))
 
     def do_GET(self):
-        queues.update()
+        Handler.queues.update()
 
-        if self.path == "/" or self.path == "/jobs" or self.path == "/jobs/":
+        if (self.path == "/" or self.path == "/status" or
+            self.path == "/status/"):
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write(bytes(queues.overview(), 'utf8'))
+            self.wfile.write(bytes(Handler.queues.overview(), 'utf8'))
             return
 
         if self.path == "/update" or self.path == "/update/":
@@ -50,11 +49,19 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(bytes("updated", 'utf8'))
             return
 
+        if self.path == "/jobs" or self.path == "/jobs/":
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(bytes(Handler.queues.all(), 'utf8'))
+            return
+
         if len(self.path) > 5 and self.path[0:5] == "/job/":
             jid = self.path[5:]
-            j = queues.get(jid)
+            j = Handler.queues.get(jid)
 
             if not j:
+                # Job not found
                 self.send_response(404)
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
@@ -64,20 +71,21 @@ class Handler(BaseHTTPRequestHandler):
             if j.status():
                 # Job has finished
                 self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
+                self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(bytes(queues.result(j), 'utf8'))
+                self.wfile.write(bytes(Handler.queues.result(j), 'utf8'))
                 return
 
+            # Job hasn't finished
             self.send_response(202)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write(bytes(queues.status(j), 'utf8'))
+            self.wfile.write(bytes(Handler.queues.status(j), 'utf8'))
             return
 
         if len(self.path) > 6 and self.path[0:6] == "/kill/":
             jid = self.path[6:]
-            j = queues.get(jid)
+            j = Handler.queues.get(jid)
 
             if not j:
                 self.send_response(404)
@@ -94,7 +102,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if len(self.path) > 5 and self.path[0:5] == "/del/":
             jid = self.path[5:]
-            j = queues.get(jid)
+            j = Handler.queues.get(jid)
 
             if not j:
                 self.send_response(404)
@@ -114,7 +122,20 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
 
-print("Config:")
-print(config)
-httpd = HTTPServer((config["hostname"], config["port"]), Handler)
-httpd.serve_forever()
+class Worker:
+    def run(config):
+        Handler.config = config
+        Handler.queues = Jobs(Handler.config)
+
+        httpd = HTTPServer((Handler.config["hostname"], Handler.config["port"]), Handler)
+        httpd.serve_forever()
+
+    def __main__():
+        assert(len(sys.argv) == 2)
+
+        config = json.load(open(sys.argv[1], 'r'))
+        Worker.run(config)
+
+
+if __name__ == "__main__":
+    Worker.__main__()
