@@ -2,10 +2,8 @@ import base64, json
 import requests, subprocess
 
 class Client:
-    def __init__(self, max_jobs=0, config=None):
-        self.max_jobs = max_jobs
+    def __init__(self, config=None):
         self.config = config
-        self.config['max_jobs'] = max_jobs
 
     def ready(self):
         return True
@@ -20,9 +18,9 @@ class Client:
         pass
 
 class LocalClient(Client):
-    def __init__(self, max_jobs=0, config=None):
+    def __init__(self, config=None):
         self.queue = Jobs(config)
-        super().__init__(max_jobs=max_jobs, config=config)
+        super().__init__(config=config)
 
     def ready():
         return self.queue.ready()
@@ -52,13 +50,13 @@ class LocalClient(Client):
         return j.result()
 
 class RemoteClient(Client):
-    def __init__(self, max_jobs=0, config=None, uri=None):
+    def __init__(self, config=None, uri=None):
         assert(uri != None)
         self.uri = uri
         self.fj = set()
         self.jq = set()
         self.wj = set()
-        super().__init__(max_jobs=max_jobs, config=config)
+        super().__init__(config=config)
         print(self.all_jobs)
 
     def ready(self):
