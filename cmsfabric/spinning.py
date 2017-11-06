@@ -12,6 +12,7 @@ class Spinning:
         self.finished_jobs = {}
         self.results = {}
         self.clients = {}
+        self.newly_finished = {}
         pass
 
     def run_ssh(self, host, command, timeout=None):
@@ -105,19 +106,21 @@ class Spinning:
         return jid
 
     def update_finished_jobs(self):
-        newly_finished = {}
         for client in self.servers:
             for j in self.running_jobs[client]:
                 if self.clients[client].finished(j):
-                    newly_finished[j] = client
+                    self.newly_finished[j] = client
                     self.running_jobs[client].remove(j)
                     self.finished_jobs[client].add(j)
-        return newly_finished
+        return self.newly_finished
 
-    def fetch_finished(self, finished):
-        for j in finished:
+    def fetch_finished(self):
+        for j in self.newly_finished:
             c = finished[j]
             self.results[j] = self.clients[c].result(j)
+            nf.add(j)
+        self.newly_finished = {}
+        return nf
 
     def have_remaining_jobs(self):
         self.update_finished_jobs()
