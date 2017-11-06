@@ -1,4 +1,4 @@
-import time, os
+import time, os, shutil
 import base64, json
 import subprocess, sys, random
 
@@ -28,12 +28,18 @@ class Job:
         f.close()
         self.stime = time.time()
 
+    def load(self, cnf_path):
+        shutil.copyfile(cnf_path, self.cfname)
+        f.flush()
+        f.close()
+        self.stime = time.time()
+
     def run(self):
         cmd = [self.cms]
         cmd += self.config["cms_args"].split(" ")
         cmd.append(self.cfname)
 
-        self._p = subprocess.Popen(cmd, stdout=self.of)
+        self._p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=self.of)
         self.rtime = time.time()
 
     def status(self):
@@ -57,6 +63,9 @@ class Job:
         s = str(b, 'utf8')
         f.close()
         return {"id": self.id, "return": self.status(), "out": s}
+
+    def result(self):
+        return {"id": self.id, "return": self.status(), "out": self.ofname}
 
     def clean(self):
         try:

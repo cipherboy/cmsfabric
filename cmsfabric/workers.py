@@ -63,6 +63,32 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(bytes(Handler.queues.all(), 'utf8'))
             return
 
+        if len(self.path) > 7 and self.path[0:7] == "/state/":
+            jid = self.path[7:]
+            j = Handler.queues.get(jid)
+
+            if not j:
+                # Job not found
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                return
+
+            if j.status():
+                # Job has finished
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                return
+
+            # Job hasn't finished
+            self.send_response(202)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            return
+
+
+
         if len(self.path) > 5 and self.path[0:5] == "/job/":
             jid = self.path[5:]
             j = Handler.queues.get(jid)
