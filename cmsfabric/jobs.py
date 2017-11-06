@@ -2,7 +2,7 @@ import time, time
 import base64, json
 import subprocess, sys, random
 
-from job import Job
+from cmsfabric.job import Job
 
 class Jobs:
     def __init__(self, config):
@@ -111,3 +111,7 @@ class Jobs:
     def result(self, j):
         assert(type(j) == Job)
         return json.dumps(j.get())
+
+    def ready(self):
+        self.update()
+        return len(self.jq) < self.config["jobs"]

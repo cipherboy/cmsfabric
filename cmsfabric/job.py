@@ -2,28 +2,24 @@ import time, os
 import base64, json
 import subprocess, sys, random
 
+from utils import u_ri, u_p
+
 class Job:
     def __init__(self, config):
         # Copy config
         self.config = config.copy()
-        self.id = self._ri()
+        self.id = u_ri()
 
-        self.cms = self._p([self.config["home"], self.config["cms"]])
-        self.cfname = self._p([self.config["home"], self.config["sats"],
+        self.cms = u_p([self.config["home"], self.config["cms"]])
+        self.cfname = u_p([self.config["home"], self.config["sats"],
                                "test-" + self.id + ".cnf"])
-        self.ofname = self._p([self.config["home"], self.config["sats"],
+        self.ofname = u_p([self.config["home"], self.config["sats"],
                                "test-" + self.id + ".out"])
         self.of = open(self.ofname, 'w')
         self.p = None
         self.stime = 0
         self.rtime = 0
         self.ftime = 0
-
-    def _ri(self):
-        return str(random.randint(100000000, 999999999))
-
-    def _p(self, parts):
-        return '/'.join(parts)
 
     def set(self, post_data):
         f = open(self.cfname, 'w')

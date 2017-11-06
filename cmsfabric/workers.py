@@ -9,8 +9,8 @@ import time, time
 import base64, json
 import subprocess, sys, random
 
-from job import Job
-from jobs import Jobs
+from cmsfabric.job import Job
+from cmsfabric.jobs import Jobs
 
 class Handler(BaseHTTPRequestHandler):
     config = None
@@ -47,6 +47,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(bytes("updated", 'utf8'))
+            return
+
+        if self.path == "/ready" or self.path == "/ready/":
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(str(Handler.queues.ready()), 'utf8')
             return
 
         if self.path == "/jobs" or self.path == "/jobs/":
