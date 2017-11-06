@@ -30,8 +30,6 @@ class Job:
 
     def load(self, cnf_path):
         shutil.copyfile(cnf_path, self.cfname)
-        f.flush()
-        f.close()
         self.stime = time.time()
 
     def run(self):

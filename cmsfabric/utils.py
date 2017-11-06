@@ -1,7 +1,7 @@
 import random
 
-def u_ri(self):
+def u_ri():
     return str(random.randint(100000000, 999999999))
 
-def u_p(self, parts):
+def u_p(parts):
     return '/'.join(parts)

@@ -28,7 +28,7 @@ class Spinning:
         return None
 
     def setup_server_ssh(self, host):
-        cmds = ["wget https://cipherboy.com/cmsfabric.tar.gz", "tar -xf cmsfabric.tar.gz"]
+        cmds = ["rm -rf cmsfabric.tar.gz cmsfabric", "wget https://cipherboy.com/cmsfabric.tar.gz -O cmsfabric.tar.gz", "tar -xf cmsfabric.tar.gz"]
         for cmd in cmds:
             r = self.run_ssh(host, cmd)
             if r == None or r != 0:
@@ -36,24 +36,26 @@ class Spinning:
                 print(r)
 
     def add_server_ssh(self, hostname, config):
-        n_p = subprocess.Popen(["ssh", hostname, "base64 -d > .cmsfabric.conf"])
-        base64_config = str(base64.b64encode(bytes(json.dumps(config), 'utf8')), 'utf8')
+        n_p = subprocess.Popen(["ssh", hostname, "base64 -d > .cmsfabric.conf"],stdin=subprocess.PIPE)
+        base64_config = base64.b64encode(bytes(json.dumps(config), 'utf8'))
+        print(base64_config)
         n_p.communicate(base64_config)
 
-        n_p = subprocess.Popen(["ssh", hostname, "python cmsfabric/workers.py .cmsfabric.conf"])
+        n_p = subprocess.Popen(["ssh", hostname, "python3 -m cmsfabric .cmsfabric.conf"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         self.worker_servers[hostname] = n_p
 
-        n_p = subprocess.Popen(["ssh" "-L", str(config["socks_port"]) + ":" + config["hostname"] + ":" + str(config["port"]), "-n", hostname])
+        n_p = subprocess.Popen(["ssh", "-L", str(config["socks_port"]) + ":" + config["hostname"] + ":" + str(config["port"]), "-N", hostname], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         self.port_forwards[hostname] = n_p
 
         self.servers.add(hostname)
         self.configs[hostname] = config
-        self.clients[hostname] = RemoteClient(config, "localhost:" + str(config["socks_port"]))
+        self.clients[hostname] = RemoteClient(config, "http://localhost:" + str(config["socks_port"]))
         self.running_jobs[hostname] = set()
         self.finished_jobs[hostname] = set()
+        time.sleep(0.5)
 
     def add_server_uri(self, host, port, config):
-        hostname = host + ":" + str(port)
+        hostname = "http://" + host + ":" + str(port)
         self.servers.add(hostname)
         self.configs[hostname] = config
         self.clients[hostname] = RemoteClient(config, hostname)
@@ -95,7 +97,7 @@ class Spinning:
         delay = 0
         while client == None:
             time.sleep(delay)
-            client = any_ready_client()
+            client = self.any_ready_client()
             if client == None and delay < 10:
                 delay += 0.1
         jid = self.clients[client].add_sat(cnf)

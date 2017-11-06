@@ -156,18 +156,18 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
 class Worker:
-    def run(config):
+    def run(self, config):
         Handler.config = config
         Handler.queues = Jobs(Handler.config)
 
         httpd = HTTPServer((Handler.config["hostname"], Handler.config["port"]), Handler)
         httpd.serve_forever()
 
-    def __main__():
+    def __main__(self):
         assert(len(sys.argv) == 2)
 
         config = json.load(open(sys.argv[1], 'r'))
-        Worker.run(config)
+        self.run(config)
 
 
 if __name__ == "__main__":

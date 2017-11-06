@@ -30,15 +30,13 @@ class LocalClient(Client):
 
     def update(self):
         self.queue.update()
-        self.all_jobs = self.queue.fj + self.queue.jq + self.queue.wj
-        self.submitted = self.queue.jq + self.queue.wj
-        self.finished = self.queue.fj
 
     def add_sat(self, cnf):
         j = Job(self.config)
         j.load(cnf)
         self.queue.add(j)
         self.update()
+        return j.id
 
     def finished(self, id):
         j = self.queue.get(id)
@@ -48,7 +46,7 @@ class LocalClient(Client):
 
     def result(self, id):
         j = self.queue.get(id)
-        if j == None or not self.finished(j):
+        if j == None or not self.finished(id):
             return None
         return j.result()
 
@@ -60,7 +58,7 @@ class RemoteClient(Client):
         self.jq = set()
         self.wj = set()
         super().__init__(config=config)
-        print(self.all_jobs)
+        print(self.uri)
 
     def ready(self):
         r = requests.post(self.uri + "/ready")
@@ -73,21 +71,22 @@ class RemoteClient(Client):
         cnf = cnf_file.read().encode('utf8')
         base64_cnf = base64.b64encode(cnf)
 
-        r = requests.post(self.uri + "/jobs", data=base64_cnf.encode('utf8'))
+        r = requests.post(self.uri + "/jobs", data=base64_cnf)
         if r.status_code != 200:
             return False
         if int("0" + r.text) == 0:
             return False
 
+        jid = r.text
         self.update()
 
-        return True
+        return jid
 
     def update(self):
         r = requests.get(self.uri + "/jobs")
         if r.status_code != 200:
             return
-        d = json.dumps(r.text)
+        d = json.loads(r.text)
         self.fj = set(d['fj'])
         self.jq = set(d['jq'])
         self.wj = set(d['wj'])
@@ -102,8 +101,7 @@ class RemoteClient(Client):
         return False
 
     def result(self, id):
-        j = self.queue.get(id)
-        if j == None or not self.finished(j):
+        if not self.finished(id):
             return None
 
         r = requests.get(self.uri + "/job/" + id)
@@ -114,7 +112,7 @@ class RemoteClient(Client):
 
         d = r.json()
         out_text = str(base64.b64decode(bytes(d['out'], 'utf8')), 'utf8')
-        out_file = config['out_path'] + "/" + d['id'] + ".out"
+        out_file = self.config['out_path'] + "/" + d['id'] + ".out"
         of = open(out_file, 'w')
         of.write(out_text)
         of.flush()
