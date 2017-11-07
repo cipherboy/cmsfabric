@@ -36,9 +36,11 @@ class Weave:
 
         while self.spinning.have_remaining_jobs():
             newly_finished = self.spinning.fetch_finished()
-            print("Newly Finished: ")
-            print(newly_finished)
             for jid in newly_finished:
                 self.loom.post_run(self.spinning.results[jid], self.data[jid])
+
+        newly_finished = self.spinning.fetch_finished()
+        for jid in newly_finished:
+            self.loom.post_run(self.spinning.results[jid], self.data[jid])
 
         self.loom.stop()

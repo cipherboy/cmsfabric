@@ -34,7 +34,8 @@ class Job:
 
     def run(self):
         cmd = [self.cms]
-        cmd += self.config["cms_args"].split(" ")
+        if self.config["cms_args"] != '':
+            cmd += self.config["cms_args"].split(" ")
         cmd.append(self.cfname)
 
         self._p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=self.of)

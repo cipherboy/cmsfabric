@@ -86,7 +86,7 @@ class Spinning:
         result = set()
         for client in self.servers:
             if self.clients[client].ready():
-                results.add(client)
+                result.add(client)
         return result
 
     def any_ready_client(self):

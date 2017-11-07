@@ -60,7 +60,7 @@ class RemoteClient(Client):
         super().__init__(config=config)
 
     def ready(self):
-        r = requests.get(self.uri + "/ready")
+        r = requests.get(self.uri + "/ready/")
         if r.status_code == 200:
             return bool(r.text)
         return False
