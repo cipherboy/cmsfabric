@@ -28,7 +28,7 @@ class Weave:
         self.loom.start()
 
         work = self.loom.gen_work()
-        cnfs = list(pool.map(type(self.loom).pre_run, work))
+        cnfs = list(map(type(self.loom).pre_run, work))
 
         for i in range(len(work)):
             jid = self.spinning.add_sat(cnfs[i])
@@ -37,10 +37,10 @@ class Weave:
         while self.spinning.have_remaining_jobs():
             newly_finished = self.spinning.fetch_finished()
             for jid in newly_finished:
-                self.loom.post_run(self.spinning.results[jid], self.data[jid])
+                self.loom.post_run(self.spinning.results[jid], self.data[jid][2])
 
         newly_finished = self.spinning.fetch_finished()
         for jid in newly_finished:
-            self.loom.post_run(self.spinning.results[jid], self.data[jid])
+            self.loom.post_run(self.spinning.results[jid], self.data[jid][2])
 
         self.loom.stop()

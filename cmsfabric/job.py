@@ -16,7 +16,7 @@ class Job:
         self.ofname = u_p([self.config["home"], self.config["sats"],
                                "test-" + self.id + ".out"])
         self.of = open(self.ofname, 'w')
-        self.p = None
+        self._p = None
         self.stime = 0
         self.rtime = 0
         self.ftime = 0
@@ -42,7 +42,7 @@ class Job:
         self.rtime = time.time()
 
     def status(self):
-        if self._p.poll() != None:
+        if self._p != None and self._p.poll() != None:
             if not self.of.closed:
                 self.of.flush()
                 self.of.close()
@@ -51,7 +51,7 @@ class Job:
         return None
 
     def kill(self):
-        if self._p.poll() == None:
+        if self._p != None and self._p.poll() == None:
             self._p.kill()
             self._p.terminate()
         self.ftime = time.time()

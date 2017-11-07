@@ -25,7 +25,8 @@ class LocalClient(Client):
         self.queue = Jobs(config)
         super().__init__(config=config)
 
-    def ready():
+    def ready(self):
+        self.update()
         return self.queue.ready()
 
     def update(self):
@@ -39,12 +40,14 @@ class LocalClient(Client):
         return j.id
 
     def finished(self, id):
+        self.update()
         j = self.queue.get(id)
         if j == None:
             return None
         return j.status() != None
 
     def result(self, id):
+        self.update()
         j = self.queue.get(id)
         if j == None or not self.finished(id):
             return None
