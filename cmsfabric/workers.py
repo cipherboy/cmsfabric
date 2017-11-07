@@ -1,174 +1,106 @@
-try:
-    # For Python2
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-except:
-    # For Python3
-    from http.server import BaseHTTPRequestHandler, HTTPServer
-
 import time, time
 import base64, json
 import subprocess, sys, random
 
 from cmsfabric.job import Job
 from cmsfabric.jobs import Jobs
+from cmsfabric.utils import *
 
-class Handler(BaseHTTPRequestHandler):
-    config = None
-    queues = None
+from flask import Flask
+from flask import request
 
-    def build_job(self):
-        j = Job(Handler.config)
-        content_length = int(self.headers['Content-Length'])
-        j.set(self.rfile.read(content_length))
-        return Handler.queues.add(j)
+app = Flask(__name__)
+config = json.load(open(u_c(), 'r'))
+queues = Jobs(config)
 
-    def do_POST(self):
-        jid = self.build_job()
-        Handler.queues.update()
+@app.route("/")
+def handle_overview():
+    queues.update()
+    return queues.overview()
 
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(bytes(jid, 'utf8'))
+@app.route("/ready/")
+def handle_ready():
+    queues.update()
+    return queues.ready()
 
-    def do_GET(self):
-        Handler.queues.update()
+@app.route("/jobs/", methods=['GET', 'POST'])
+def handle_jobs():
+    queues.update()
+    if request.method == 'POST':
+        j = Job(config)
+        j.set(request.get_data())
+        return queues.add(j)
+    else:
+        return queues.all()
 
-        if (self.path == "/" or self.path == "/status" or
-            self.path == "/status/"):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(bytes(Handler.queues.overview(), 'utf8'))
-            return
+@app.route("/update/")
+def handle_update():
+    queues.update()
+    return queues.all()
 
-        if self.path == "/update" or self.path == "/update/":
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(bytes("updated", 'utf8'))
-            return
+@app.route("/status/<int:jid>")
+def handle_status(jid):
+    queues.update()
+    j = queues.get(str(jid))
+    if not j:
+        return "", 404
 
-        if self.path == "/ready" or self.path == "/ready/":
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(str(Handler.queues.ready()), 'utf8')
-            return
+    if j.status():
+        return "true", 200
 
-        if self.path == "/jobs" or self.path == "/jobs/":
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(bytes(Handler.queues.all(), 'utf8'))
-            return
+    return "false", 202
 
-        if len(self.path) > 7 and self.path[0:7] == "/state/":
-            jid = self.path[7:]
-            j = Handler.queues.get(jid)
+@app.route("/job/<int:jid>")
+def handle_job(jid):
+    queues.update()
+    j = queues.get(str(jid))
+    if not j:
+        return "", 404
 
-            if not j:
-                # Job not found
-                self.send_response(404)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                return
+    if j.status():
+        return queues.result(j), 200
 
-            if j.status():
-                # Job has finished
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                return
-
-            # Job hasn't finished
-            self.send_response(202)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            return
+    return "", 202
 
 
+@app.route("/kill/<int:jid>")
+def handle_kill(jid):
+    queues.update()
+    j = queues.get(str(jid))
+    if not j:
+        return "", 404
 
-        if len(self.path) > 5 and self.path[0:5] == "/job/":
-            jid = self.path[5:]
-            j = Handler.queues.get(jid)
+    j.kill()
+    return ""
 
-            if not j:
-                # Job not found
-                self.send_response(404)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(bytes("Job not found: " + jid, 'utf8'))
-                return
 
-            if j.status():
-                # Job has finished
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(bytes(Handler.queues.result(j), 'utf8'))
-                return
+@app.route("/clean/<int:jid>")
+def handle_clean(jid):
+    queues.update()
+    j = queues.get(str(jid))
+    if not j:
+        return "", 404
 
-            # Job hasn't finished
-            self.send_response(202)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(bytes(Handler.queues.status(j), 'utf8'))
-            return
+    j.clean()
+    return ""
 
-        if len(self.path) > 6 and self.path[0:6] == "/kill/":
-            jid = self.path[6:]
-            j = Handler.queues.get(jid)
-
-            if not j:
-                self.send_response(404)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(bytes("Job not found: " + jid, 'utf8'))
-                return
-
-            j.kill()
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            return
-
-        if len(self.path) > 5 and self.path[0:5] == "/del/":
-            jid = self.path[5:]
-            j = Handler.queues.get(jid)
-
-            if not j:
-                self.send_response(404)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(bytes("Job not found: " + jid, 'utf8'))
-                return
-
-            j.clean()
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            return
-
-        else:
-            self.send_response(404)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
 
 class Worker:
-    def run(self, config):
-        Handler.config = config
-        Handler.queues = Jobs(Handler.config)
+    pass
+#    def run(self, config):
+#        Handler.config = config
+#        Handler.queues = Jobs(Handler.config)
+#
+#        httpd = HTTPServer((Handler.config["hostname"], Handler.config["port"]), Handler)
+#        while True:
+#            httpd.handle_request()
+#
+#    def __main__(self):
+#        assert(len(sys.argv) == 2)
+#
+#        config = json.load(open(sys.argv[1], 'r'))
+#        self.run(config)
 
-        httpd = HTTPServer((Handler.config["hostname"], Handler.config["port"]), Handler)
-        httpd.serve_forever()
 
-    def __main__(self):
-        assert(len(sys.argv) == 2)
-
-        config = json.load(open(sys.argv[1], 'r'))
-        self.run(config)
-
-
-if __name__ == "__main__":
-    Worker.__main__()
+#if __name__ == "__main__":
+#    Worker.__main__()

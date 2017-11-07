@@ -29,7 +29,7 @@ class Spinning:
         return None
 
     def setup_server_ssh(self, host):
-        cmds = ["rm -rf cmsfabric.tar.gz cmsfabric", "wget https://cipherboy.com/cmsfabric.tar.gz -O cmsfabric.tar.gz", "tar -xf cmsfabric.tar.gz"]
+        cmds = ["rm -rf cmsfabric.tar.gz cmsfabric", "wget https://cipherboy.com/cmsfabric.tar.gz -O cmsfabric.tar.gz", "tar -xf cmsfabric.tar.gz", "pip install --user flask", "pip3 install --user flask"]
         for cmd in cmds:
             r = self.run_ssh(host, cmd)
             if r == None or r != 0:
@@ -42,7 +42,7 @@ class Spinning:
         print(base64_config)
         n_p.communicate(base64_config)
 
-        n_p = subprocess.Popen(["ssh", hostname, "python3 -m cmsfabric .cmsfabric.conf"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        n_p = subprocess.Popen(["ssh", hostname, 'FLASK_APP="cmsfabric/workers.py" python3 -m flask run'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         self.worker_servers[hostname] = n_p
 
         n_p = subprocess.Popen(["ssh", "-L", str(config["socks_port"]) + ":" + config["hostname"] + ":" + str(config["port"]), "-N", hostname], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -94,13 +94,9 @@ class Spinning:
         return None
 
     def add_sat(self, cnf):
-        client = None
-        delay = 0
-        while client == None:
-            time.sleep(delay)
-            client = self.any_ready_client()
-            if client == None and delay < 10:
-                delay += 0.1
+        client = self.any_ready_client()
+        if client == None:
+            client = self.server_list()[0]
         jid = self.clients[client].add_sat(cnf)
         self.running_[client].add(jid)
         return jid
