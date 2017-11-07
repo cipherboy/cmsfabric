@@ -13,6 +13,9 @@ class Spinning:
         self.results = {}
         self.clients = {}
         self.newly_finished = {}
+
+        self.ready_clients = set()
+        self.add_sat_list = []
         pass
 
     def run_ssh(self, host, command, timeout=None):
@@ -39,7 +42,6 @@ class Spinning:
     def add_server_ssh(self, hostname, config):
         n_p = subprocess.Popen(["ssh", hostname, "base64 -d > .cmsfabric.conf"],stdin=subprocess.PIPE)
         base64_config = base64.b64encode(bytes(json.dumps(config), 'utf8'))
-        print(base64_config)
         n_p.communicate(base64_config)
 
         n_p = subprocess.Popen(["ssh", hostname, 'FLASK_APP="cmsfabric/workers.py" python3 -m flask run'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -88,22 +90,26 @@ class Spinning:
         return result
 
     def any_ready_client(self):
-        for client in self.server_list():
-            if self.clients[client].ready():
-                return client
-        return None
+        if len(self.ready_clients) == 0:
+            self.ready_clients = self.all_ready_clients().copy()
+            if len(self.ready_clients) == 0:
+                return None
+
+        return self.ready_clients.pop()
 
     def add_sat(self, cnf):
         client = self.any_ready_client()
+        if len(self.add_sat_list) == 0:
+            self.add_sat_list = self.server_list()
         if client == None:
-            client = self.server_list()[0]
+            client = self.add_sat_list[0]
         jid = self.clients[client].add_sat(cnf)
-        self.running_[client].add(jid)
+        self.running_jobs[client].add(jid)
         return jid
 
     def update_finished_jobs(self):
         for client in self.servers:
-            for j in self.running_jobs[client]:
+            for j in self.running_jobs[client].copy():
                 if self.clients[client].finished(j):
                     self.newly_finished[j] = client
                     self.running_jobs[client].remove(j)
@@ -111,8 +117,9 @@ class Spinning:
         return self.newly_finished
 
     def fetch_finished(self):
+        nf = set()
         for j in self.newly_finished:
-            c = finished[j]
+            c = self.newly_finished[j]
             self.results[j] = self.clients[c].result(j)
             nf.add(j)
         self.newly_finished = {}

@@ -21,14 +21,16 @@ def handle_overview():
 @app.route("/ready/")
 def handle_ready():
     queues.update()
-    return queues.ready()
+    return str(queues.ready())
 
 @app.route("/jobs/", methods=['GET', 'POST'])
 def handle_jobs():
     queues.update()
     if request.method == 'POST':
+        data = request.get_data()
+        print(data)
         j = Job(config)
-        j.set(request.get_data())
+        j.set(data)
         return queues.add(j)
     else:
         return queues.all()
@@ -83,24 +85,3 @@ def handle_clean(jid):
 
     j.clean()
     return ""
-
-
-class Worker:
-    pass
-#    def run(self, config):
-#        Handler.config = config
-#        Handler.queues = Jobs(Handler.config)
-#
-#        httpd = HTTPServer((Handler.config["hostname"], Handler.config["port"]), Handler)
-#        while True:
-#            httpd.handle_request()
-#
-#    def __main__(self):
-#        assert(len(sys.argv) == 2)
-#
-#        config = json.load(open(sys.argv[1], 'r'))
-#        self.run(config)
-
-
-#if __name__ == "__main__":
-#    Worker.__main__()

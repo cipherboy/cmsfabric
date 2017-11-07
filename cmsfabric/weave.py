@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+import functools
 
 from cmsfabric.spinning import *
 
@@ -22,12 +23,12 @@ class Weave:
         self.loom.set_weave(self)
 
     def run(self):
-        pool = Pool(processes=4)
+        pool = Pool(processes=16)
 
         self.loom.start()
 
         work = self.loom.gen_work()
-        cnfs = pool.map(self.loom.pre_run, work)
+        cnfs = list(pool.map(type(self.loom).pre_run, work))
 
         for i in range(len(work)):
             jid = self.spinning.add_sat(cnfs[i])
@@ -35,6 +36,8 @@ class Weave:
 
         while self.spinning.have_remaining_jobs():
             newly_finished = self.spinning.fetch_finished()
+            print("Newly Finished: ")
+            print(newly_finished)
             for jid in newly_finished:
                 self.loom.post_run(self.spinning.results[jid], self.data[jid])
 

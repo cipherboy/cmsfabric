@@ -21,7 +21,7 @@ class Loom:
         pass
 
     def gen_work(self):
-        pass
+        return []
 
     def pre_run(data):
         pass

@@ -58,10 +58,9 @@ class RemoteClient(Client):
         self.jq = set()
         self.wj = set()
         super().__init__(config=config)
-        print(self.uri)
 
     def ready(self):
-        r = requests.post(self.uri + "/ready")
+        r = requests.get(self.uri + "/ready")
         if r.status_code == 200:
             return bool(r.text)
         return False
@@ -71,7 +70,7 @@ class RemoteClient(Client):
         cnf = cnf_file.read().encode('utf8')
         base64_cnf = base64.b64encode(cnf)
 
-        r = requests.post(self.uri + "/jobs", data=base64_cnf)
+        r = requests.post(self.uri + "/jobs/", data=base64_cnf)
         if r.status_code != 200:
             return False
         if int("0" + r.text) == 0:
@@ -83,7 +82,7 @@ class RemoteClient(Client):
         return jid
 
     def update(self):
-        r = requests.get(self.uri + "/jobs")
+        r = requests.get(self.uri + "/update/")
         if r.status_code != 200:
             return
         d = json.loads(r.text)
@@ -92,7 +91,7 @@ class RemoteClient(Client):
         self.wj = set(d['wj'])
 
     def finished(self, id):
-        r = requests.get(self.uri + "/state/" + id)
+        r = requests.get(self.uri + "/status/" + id)
         if r.status_code == 404:
             return None
         elif r.status_code == 200:
@@ -101,10 +100,13 @@ class RemoteClient(Client):
         return False
 
     def result(self, id):
+        print("Fetching result: " + id)
         if not self.finished(id):
+            print("Result not finished")
             return None
 
         r = requests.get(self.uri + "/job/" + id)
+        print("Fetched: " + str(r.status_code))
         if r.status_code == 404:
             return None
         elif r.status_code != 200:
